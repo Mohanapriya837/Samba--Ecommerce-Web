@@ -1,207 +1,673 @@
-# 📚 Samba — Book Selling Platform
+# 📚 Samba — Full-Stack Book & Learning Platform
 
-A full-stack e-commerce application for browsing and buying books, with a
-separate admin panel for managing the catalogue, categories, users and
-orders. Built as a Java Full Stack portfolio project: **React** on the
-frontend, **Spring Boot** on the backend, **MySQL** for storage, and **JWT**
-for stateless authentication.
+> A production-style Java Full Stack portfolio project built with **React, Spring Boot, Spring Security, JWT, JPA/Hibernate, and MySQL**.
 
-> Live demo: _add your deployed URLs here once deployed_
-> Backend: `https://your-backend.onrender.com` · Frontend: `https://your-app.vercel.app`
+Samba is a full-stack platform designed for **book discovery, online book purchasing, doorstep delivery, and role-based administration**. The platform separates customer and administrator capabilities using **JWT-based authentication and role-based authorization**.
+
+The application follows a clean **layered REST architecture**, with React providing the frontend experience and Spring Boot exposing secure REST APIs backed by MySQL.
 
 ---
 
-## Table of contents
+## 🚀 Project Overview
 
-1. [Description](#description)
-2. [Features](#features)
-3. [Technology stack](#technology-stack)
-4. [Architecture](#architecture)
-5. [Database structure](#database-structure)
-6. [API documentation](#api-documentation)
-7. [Authentication flow](#authentication-flow)
-8. [User flow](#user-flow)
-9. [Admin flow](#admin-flow)
-10. [Project structure](#project-structure)
-11. [Local setup](#local-setup)
-12. [Environment variables](#environment-variables)
-13. [Database setup](#database-setup)
-14. [Backend setup](#backend-setup)
-15. [Frontend setup](#frontend-setup)
-16. [Deployment](#deployment)
-17. [Screenshots](#screenshots)
-18. [Future enhancements](#future-enhancements)
-19. [Known limitations](#known-limitations)
+Samba provides two primary experiences:
+
+### 👤 Customer Experience
+
+Customers can:
+
+* Register and authenticate securely.
+* Browse the available book catalogue.
+* Search books by title, author, or ISBN.
+* Filter books by category and price.
+* Sort books by title, author, price, or newest.
+* View detailed book information.
+* Add books to a shopping cart.
+* Update cart quantities.
+* Remove books from the cart.
+* Checkout with shipping information.
+* Select a payment method.
+* Track placed orders.
+* View order history.
+* Cancel eligible pending orders.
+* Manage their profile.
+* Change their password.
+
+### 🛠️ Administrator Experience
+
+Administrators have a completely separate administration area where they can:
+
+* View dashboard statistics.
+* Manage books.
+* Manage categories.
+* Manage users.
+* Enable or disable user accounts.
+* Monitor customer orders.
+* Filter orders by status.
+* Update order status.
+* Monitor inventory.
+* View recent orders and revenue statistics.
+
+### 🔐 Security
+
+The application implements:
+
+* JWT authentication.
+* BCrypt password hashing.
+* Spring Security.
+* Role-based authorization.
+* Protected REST APIs.
+* Protected React routes.
+* `USER` and `ADMIN` roles.
+* Server-side authorization checks.
+* Centralized authentication handling.
+
+A normal customer cannot access administrative APIs even by manually entering an admin URL.
 
 ---
 
-## Description
+# ✨ Key Features
 
-Samba is a two-sided book store: customers can register, browse and search a
-catalogue, manage a cart, check out, and track their order history; admins
-manage the book catalogue, categories, users and order fulfilment from a
-separate panel. The backend is a REST API secured with JWT and role-based
-authorization (`USER` / `ADMIN`); the frontend is a single-page React app
-that consumes it. There is no payment gateway — checkout records a chosen
-payment method (Cash on Delivery, Card or UPI) but does not process a real
-payment. That is intentionally listed under [Future enhancements](#future-enhancements)
-rather than faked.
+## 📖 Book Catalogue
 
-## Features
+Customers can browse a responsive catalogue with:
 
-**Public**
-- Browse the catalogue, search by title/author/ISBN, filter by category and
-  price range, sort by title/author/price/newest.
-- View book details.
+* Book cover images.
+* Title.
+* Author.
+* ISBN.
+* Publisher.
+* Category.
+* Price.
+* Available stock.
+* Active/inactive catalogue status.
 
-**Customer (role `USER`)**
-- Register / log in with a JWT-secured session.
-- Add to cart, change quantity, remove items — all validated against live
-  stock.
-- Checkout with shipping address, phone and payment method.
-- View order history and per-order details with a status timeline.
-- Cancel a `PENDING` order (restocks the books).
-- Edit profile, change password.
+### Search & Filtering
 
-**Admin (role `ADMIN`)**
-- Dashboard: revenue, order/book/user counts, orders-by-status breakdown,
-  low-stock count, recent orders.
-- Full CRUD on books (with inline stock editing) and categories.
-- View and search users; enable/disable accounts (cannot disable self).
-- View and filter orders; move an order through its allowed status
-  transitions (`PENDING → CONFIRMED → SHIPPED → DELIVERED`, or
-  `PENDING/CONFIRMED → CANCELLED`, which restocks the books).
+The catalogue supports:
 
-**Cross-cutting**
-- Centralized error handling with consistent JSON error responses and the
-  correct HTTP status for every case (400/401/403/404/409/500).
-- Server-side validation on every write endpoint (never trusts the client).
-- Responsive UI (desktop / tablet / mobile), loading states, empty states,
-  toasts, and graceful handling of broken cover images.
+* Keyword search.
+* Category filtering.
+* Minimum price.
+* Maximum price.
+* Sorting.
+* Pagination.
 
-## Technology stack
+Supported sorting options include:
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 18, React Router 6, Axios, Vite, custom CSS (no UI kit) |
-| Backend | Java 21, Spring Boot 3.3, Spring Web, Spring Security, Spring Data JPA / Hibernate |
-| Auth | JWT (`jjwt`), BCrypt password hashing |
-| Database | MySQL 8 |
-| Build tools | Maven (backend), npm/Vite (frontend) |
-| Deployment target | Render or Railway (backend), Vercel (frontend) — no Docker |
-
-## Architecture
-
-Classic layered REST architecture on the backend, consumed by a
-component-based SPA on the frontend:
-
-```
-React (pages/components)
-   │  axios, JWT in Authorization header
-   ▼
-Spring Boot Controller   (@RestController — request/response only, no business logic)
-   │
-   ▼
-Service                  (@Service, @Transactional — business rules, validation, orchestration)
-   │
-   ▼
-Repository                (Spring Data JPA — query methods / Specifications)
-   │
-   ▼
-Hibernate (JPA provider) → MySQL
+```text
+Title
+Author
+Price
+Newest
 ```
 
-- **Controllers** only translate HTTP ⇄ DTOs and delegate to services — no
-  business logic lives here.
-- **Services** hold every business rule (stock checks, order-status
-  transitions, password hashing, uniqueness checks) and own the
-  `@Transactional` boundaries.
-- **Repositories** are thin Spring Data JPA interfaces; `BookSpecifications`
-  builds the dynamic search/filter query.
-- **DTOs** (Java records) are the only objects that cross the controller
-  boundary — entities are never serialized directly to JSON, so the API
-  shape is decoupled from the database schema.
-- **EntityMapper** is a single, explicit place where entities become DTOs.
-- On the frontend, `src/api/*.js` is the only place that knows an HTTP
-  endpoint exists; `src/context/*` centralizes auth and cart state so no
-  component talks to `localStorage` or axios directly.
+---
 
-## Database structure
+## 🛒 Shopping Cart
 
-MySQL, created/updated automatically by Hibernate (`ddl-auto=update`) from
-the JPA entities — no manual DDL to run.
+The cart supports:
 
-| Table | Purpose | Key relationships |
-|---|---|---|
-| `users` | Account, role (`USER`/`ADMIN`), hashed password, enabled flag | 1:1 → `carts`, 1:M → `orders` |
-| `categories` | Book categories | 1:M → `books` (delete blocked while books reference it) |
-| `books` | Catalogue; `active` flag for soft delete | M:1 → `categories` |
-| `carts` | One per user | 1:1 → `users`, 1:M → `cart_items` |
-| `cart_items` | Book + quantity in a cart | M:1 → `carts`, M:1 → `books`; **unique (cart_id, book_id)** — prevents duplicate rows for the same book |
-| `orders` | A placed order; status, totals, shipping/payment info | M:1 → `users`, 1:M → `order_items` |
-| `order_items` | Snapshot of book title/price/quantity at purchase time | M:1 → `orders`, M:1 → `books` |
+* Add book.
+* Update quantity.
+* Remove item.
+* Clear cart.
+* Live stock validation.
+* Duplicate-item prevention.
 
-**Constraints & indexes worth knowing**
-- `users.email`, `categories.name`, `books.isbn` — unique constraints.
-- `cart_items(cart_id, book_id)` — composite unique constraint (the actual
-  mechanism preventing duplicate cart rows for the same book).
-- `books(title)`, `books(author)` — indexes to keep search responsive.
-- Cascades: deleting a `User`'s cart cascades to its `CartItem`s
-  (`orphanRemoval`); deleting an `Order` cascades to its `OrderItem`s.
-  **Books are never hard-deleted** — "delete" sets `active=false`, which
-  keeps past `OrderItem`s valid and intact while removing the book from the
-  catalogue and from every cart that held it.
-- `order_items` stores its own `bookTitle`/`unitPrice`/`subtotal` snapshot,
-  so an order's history stays accurate even if the book's price changes or
-  the book is later removed from sale.
+The backend validates stock before modifying the cart and again during checkout.
 
-**Sample/initial data** — on first startup, `DataSeeder` creates one
-`ADMIN` account (`ADMIN_EMAIL` / `ADMIN_PASSWORD`, default
-`admin@samba.com` / `Admin@123`) and, if the database is empty, 5 sample
-categories and 8 sample books (toggle with `SEED_SAMPLE_DATA`). In
-production this defaults to **off** (see [Environment variables](#environment-variables)).
+---
 
-## API documentation
+## 📦 Order Management
 
-Base path: `/api`. JWT required unless marked public. `ADMIN` endpoints
-also require the `ADMIN` role.
+Customers can place orders using their cart.
 
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| POST | `/auth/register` | Public | Create a `USER` account, returns a JWT |
-| POST | `/auth/login` | Public | Authenticate, returns a JWT |
-| GET | `/books?keyword&categoryId&minPrice&maxPrice&page&size&sortBy&direction` | Public | Search/filter/sort/paginate the catalogue |
-| GET | `/books/{id}` | Public | Book details |
-| GET | `/categories` | Public | List categories |
-| GET | `/categories/{id}` | Public | Category details |
-| GET | `/users/me` | Any user | Current profile |
-| PUT | `/users/me` | Any user | Update profile |
-| PUT | `/users/me/password` | Any user | Change password |
-| GET | `/cart` | USER | View cart |
-| POST | `/cart/items` | USER | Add a book to the cart |
-| PUT | `/cart/items/{itemId}` | USER | Update quantity |
-| DELETE | `/cart/items/{itemId}` | USER | Remove an item |
-| DELETE | `/cart` | USER | Clear the cart |
-| POST | `/orders/checkout` | USER | Convert the cart into an order |
-| GET | `/orders?page&size` | USER | Order history |
-| GET | `/orders/{id}` | USER | Order details (own orders only) |
-| POST | `/orders/{id}/cancel` | USER | Cancel a `PENDING` order |
-| GET | `/admin/dashboard` | ADMIN | Stats: revenue, counts, orders by status, recent orders |
-| POST | `/admin/books` | ADMIN | Create a book |
-| PUT | `/admin/books/{id}` | ADMIN | Update a book |
-| PATCH | `/admin/books/{id}/stock` | ADMIN | Update stock only |
-| DELETE | `/admin/books/{id}` | ADMIN | Soft-delete a book |
-| POST | `/admin/categories` | ADMIN | Create a category |
-| PUT | `/admin/categories/{id}` | ADMIN | Update a category |
-| DELETE | `/admin/categories/{id}` | ADMIN | Delete a category (blocked if it still has books) |
-| GET | `/admin/users?keyword&page&size` | ADMIN | List/search users |
-| GET | `/admin/users/{id}` | ADMIN | User details |
-| PATCH | `/admin/users/{id}/status` | ADMIN | Enable/disable a user |
-| GET | `/admin/orders?status&page&size` | ADMIN | List/filter orders |
-| GET | `/admin/orders/{id}` | ADMIN | Order details |
-| PATCH | `/admin/orders/{id}/status` | ADMIN | Move an order to its next status |
+Checkout captures:
 
-**Error shape** (every non-2xx response):
+* Shipping address.
+* Phone number.
+* Payment method.
+* Ordered books.
+* Quantity.
+* Total amount.
+
+### Order Lifecycle
+
+```text
+PENDING
+   ↓
+CONFIRMED
+   ↓
+SHIPPED
+   ↓
+DELIVERED
+```
+
+Cancellation is available for eligible orders:
+
+```text
+PENDING ─────→ CANCELLED
+     │
+     └────────→ CONFIRMED ─────→ CANCELLED
+```
+
+Cancelled orders restock the associated books.
+
+---
+
+# 💳 Payment Handling
+
+The current application **does not process real payments**.
+
+Customers can select:
+
+* Cash on Delivery
+* Card
+* UPI
+
+The selected method is stored with the order, but no actual payment gateway transaction is performed.
+
+This limitation is intentionally documented rather than presenting simulated payment processing as a real integration.
+
+### Planned Payment Integration
+
+Future versions can integrate:
+
+* Razorpay
+* Stripe
+* Other payment providers
+
+---
+
+# 👨‍💼 Admin Management
+
+The administrator has access to a dedicated admin interface.
+
+## Dashboard
+
+The dashboard provides:
+
+* Total revenue.
+* Total orders.
+* Total books.
+* Total users.
+* Low-stock information.
+* Orders grouped by status.
+* Recent orders.
+
+## Book Management
+
+Administrators can:
+
+* Add books.
+* Edit books.
+* Update stock.
+* Soft-delete books.
+* Manage book information.
+* Associate books with categories.
+
+## Category Management
+
+Administrators can:
+
+* Create categories.
+* Update categories.
+* Delete categories when allowed.
+
+Categories containing books cannot be deleted until their references are removed.
+
+## User Management
+
+Administrators can:
+
+* Search users.
+* View user information.
+* Enable accounts.
+* Disable accounts.
+
+An administrator cannot disable their own account.
+
+## Order Management
+
+Administrators can:
+
+* Search orders.
+* Filter by status.
+* View order details.
+* Update order status.
+* Monitor fulfilment progress.
+
+---
+
+# 🔐 Role-Based Access Control
+
+Samba implements role-based access control using **Spring Security + JWT**.
+
+There are two application roles:
+
+```text
+USER
+ADMIN
+```
+
+## USER
+
+A `USER` can access customer functionality such as:
+
+```text
+Home
+Books
+Book Details
+Cart
+Checkout
+My Orders
+Order Details
+Profile
+```
+
+A user cannot access:
+
+```text
+Admin Dashboard
+Manage Books
+Manage Categories
+Manage Users
+Manage Orders
+```
+
+## ADMIN
+
+An `ADMIN` can access:
+
+```text
+Admin Dashboard
+Manage Books
+Manage Categories
+Manage Users
+Manage Orders
+```
+
+### Backend Protection
+
+Administrative APIs require:
+
+```text
+ROLE_ADMIN
+```
+
+For example:
+
+```http
+GET /api/admin/dashboard
+```
+
+requires administrator authorization.
+
+A normal user attempting to access an administrative API receives:
+
+```text
+403 Forbidden
+```
+
+### Registration Security
+
+Public registration does **not** accept a role from the client.
+
+Every newly registered account is created as:
+
+```text
+USER
+```
+
+The client cannot register itself as an administrator.
+
+---
+
+# 🔑 Authentication Architecture
+
+The authentication process follows this flow:
+
+```text
+React Login Form
+       │
+       ▼
+POST /api/auth/login
+       │
+       ▼
+Spring Security AuthenticationManager
+       │
+       ▼
+BCrypt Password Verification
+       │
+       ▼
+JWT Generated
+       │
+       ▼
+React Stores JWT
+       │
+       ▼
+Authorization: Bearer <token>
+       │
+       ▼
+JwtAuthFilter
+       │
+       ▼
+JWT Validation
+       │
+       ▼
+SecurityContext
+       │
+       ▼
+Role-Based Authorization
+```
+
+### JWT Payload
+
+The JWT contains the authenticated user's identity and role information.
+
+The backend uses the JWT to establish the authenticated security context for subsequent requests.
+
+---
+
+# 🏗️ System Architecture
+
+Samba follows a classic layered architecture.
+
+```text
+┌───────────────────────────────┐
+│          React SPA            │
+│ Pages / Components / Context  │
+└───────────────┬───────────────┘
+                │
+                │ Axios + JWT
+                ▼
+┌───────────────────────────────┐
+│      Spring Boot REST API     │
+│          Controllers          │
+└───────────────┬───────────────┘
+                │
+                ▼
+┌───────────────────────────────┐
+│           Services            │
+│ Business Logic / Transactions │
+└───────────────┬───────────────┘
+                │
+                ▼
+┌───────────────────────────────┐
+│         Repositories          │
+│        Spring Data JPA        │
+└───────────────┬───────────────┘
+                │
+                ▼
+┌───────────────────────────────┐
+│       Hibernate / JPA         │
+└───────────────┬───────────────┘
+                │
+                ▼
+┌───────────────────────────────┐
+│           MySQL 8             │
+└───────────────────────────────┘
+```
+
+## Architectural Responsibilities
+
+### Controller Layer
+
+Controllers are responsible for:
+
+* Receiving HTTP requests.
+* Validating request structure.
+* Delegating operations to services.
+* Returning API responses.
+
+Business logic is not placed directly inside controllers.
+
+### Service Layer
+
+Services contain the application business rules, including:
+
+* Stock validation.
+* Cart operations.
+* Checkout.
+* Order processing.
+* Order-status transitions.
+* Password changes.
+* User management.
+* Category validation.
+
+Transactional operations are handled at the service layer.
+
+### Repository Layer
+
+Repositories use Spring Data JPA for:
+
+* Database access.
+* Query methods.
+* Filtering.
+* Pagination.
+* Sorting.
+
+### DTO Layer
+
+DTOs are used between the controller and client layers.
+
+Entities are not directly exposed as API responses.
+
+This keeps the API contract separated from the database model.
+
+### Mapper Layer
+
+`EntityMapper` provides explicit conversion between entities and DTOs.
+
+---
+
+# 🗄️ Database Design
+
+Samba uses **MySQL 8** with **JPA/Hibernate**.
+
+Hibernate automatically creates or updates the schema using:
+
+```properties
+spring.jpa.hibernate.ddl-auto=update
+```
+
+## Entity Relationships
+
+```text
+User
+ │
+ ├────────────── Cart
+ │                  │
+ │                  └── CartItem ─── Book
+ │
+ └────────────── Order
+                    │
+                    └── OrderItem ─── Book
+
+Category
+   │
+   └────────────── Books
+```
+
+## Main Tables
+
+| Table         | Purpose                                 |
+| ------------- | --------------------------------------- |
+| `users`       | User accounts, roles and account status |
+| `categories`  | Book categories                         |
+| `books`       | Book catalogue                          |
+| `carts`       | User shopping carts                     |
+| `cart_items`  | Books stored in carts                   |
+| `orders`      | Customer orders                         |
+| `order_items` | Ordered book snapshots                  |
+
+---
+
+# 🧩 Data Integrity
+
+The application includes several database-level and application-level safeguards.
+
+### Unique Constraints
+
+Unique values include:
+
+```text
+users.email
+categories.name
+books.isbn
+```
+
+### Cart Constraint
+
+A cart cannot contain duplicate rows for the same book.
+
+The database uses:
+
+```text
+(cart_id, book_id)
+```
+
+as a composite unique constraint.
+
+### Order Snapshot
+
+`order_items` stores:
+
+```text
+bookTitle
+unitPrice
+quantity
+subtotal
+```
+
+This preserves historical order information even if the original book:
+
+* changes price,
+* changes details,
+* becomes inactive.
+
+### Soft Delete
+
+Books are not physically deleted from the database.
+
+Instead:
+
+```text
+active = false
+```
+
+This preserves historical order references.
+
+---
+
+# 🔌 REST API
+
+Base URL:
+
+```text
+/api
+```
+
+## Authentication
+
+| Method | Endpoint         | Access | Purpose             |
+| ------ | ---------------- | ------ | ------------------- |
+| POST   | `/auth/register` | Public | Register a customer |
+| POST   | `/auth/login`    | Public | Authenticate user   |
+
+## Books
+
+| Method | Endpoint      | Access | Purpose                      |
+| ------ | ------------- | ------ | ---------------------------- |
+| GET    | `/books`      | Public | Search/filter/paginate books |
+| GET    | `/books/{id}` | Public | View book details            |
+
+Supported query parameters:
+
+```text
+keyword
+categoryId
+minPrice
+maxPrice
+page
+size
+sortBy
+direction
+```
+
+## Categories
+
+| Method | Endpoint           | Access | Purpose         |
+| ------ | ------------------ | ------ | --------------- |
+| GET    | `/categories`      | Public | List categories |
+| GET    | `/categories/{id}` | Public | View category   |
+
+## User Profile
+
+| Method | Endpoint             | Access        | Purpose         |
+| ------ | -------------------- | ------------- | --------------- |
+| GET    | `/users/me`          | Authenticated | View profile    |
+| PUT    | `/users/me`          | Authenticated | Update profile  |
+| PUT    | `/users/me/password` | Authenticated | Change password |
+
+## Cart
+
+| Method | Endpoint               | Access | Purpose         |
+| ------ | ---------------------- | ------ | --------------- |
+| GET    | `/cart`                | USER   | View cart       |
+| POST   | `/cart/items`          | USER   | Add item        |
+| PUT    | `/cart/items/{itemId}` | USER   | Update quantity |
+| DELETE | `/cart/items/{itemId}` | USER   | Remove item     |
+| DELETE | `/cart`                | USER   | Clear cart      |
+
+## Orders
+
+| Method | Endpoint              | Access | Purpose              |
+| ------ | --------------------- | ------ | -------------------- |
+| POST   | `/orders/checkout`    | USER   | Place order          |
+| GET    | `/orders`             | USER   | Order history        |
+| GET    | `/orders/{id}`        | USER   | View own order       |
+| POST   | `/orders/{id}/cancel` | USER   | Cancel pending order |
+
+## Administration
+
+| Method | Endpoint                    | Access | Purpose              |
+| ------ | --------------------------- | ------ | -------------------- |
+| GET    | `/admin/dashboard`          | ADMIN  | Dashboard statistics |
+| POST   | `/admin/books`              | ADMIN  | Create book          |
+| PUT    | `/admin/books/{id}`         | ADMIN  | Update book          |
+| PATCH  | `/admin/books/{id}/stock`   | ADMIN  | Update stock         |
+| DELETE | `/admin/books/{id}`         | ADMIN  | Soft-delete book     |
+| POST   | `/admin/categories`         | ADMIN  | Create category      |
+| PUT    | `/admin/categories/{id}`    | ADMIN  | Update category      |
+| DELETE | `/admin/categories/{id}`    | ADMIN  | Delete category      |
+| GET    | `/admin/users`              | ADMIN  | Search users         |
+| GET    | `/admin/users/{id}`         | ADMIN  | User details         |
+| PATCH  | `/admin/users/{id}/status`  | ADMIN  | Enable/disable user  |
+| GET    | `/admin/orders`             | ADMIN  | Search/filter orders |
+| GET    | `/admin/orders/{id}`        | ADMIN  | Order details        |
+| PATCH  | `/admin/orders/{id}/status` | ADMIN  | Update order status  |
+
+---
+
+# ⚠️ API Error Handling
+
+The backend uses centralized exception handling.
+
+Typical HTTP responses include:
+
+```text
+400 Bad Request
+401 Unauthorized
+403 Forbidden
+404 Not Found
+409 Conflict
+500 Internal Server Error
+```
+
+Example:
+
 ```json
 {
   "timestamp": "2026-09-25T10:15:30",
@@ -209,287 +675,680 @@ also require the `ADMIN` role.
   "error": "Bad Request",
   "message": "Only 3 copies of 'Clean Code' available",
   "path": "/api/cart/items",
-  "validationErrors": { "field": "message" }
+  "validationErrors": {
+    "quantity": "Quantity exceeds available stock"
+  }
 }
 ```
 
-## Authentication flow
+This provides a consistent error contract for the React frontend.
 
-```
-1. POST /api/auth/register or /api/auth/login
-      Spring Security's AuthenticationManager verifies the password
-      against the BCrypt hash stored in `users.password`
-2. Backend returns { token, tokenType, expiresInMs, user }
-      token = a JWT signed with HS256, subject = email, claim "role" = USER|ADMIN
-3. Frontend stores the token (localStorage) and the user object
-4. Every subsequent request: axios interceptor adds
-      Authorization: Bearer <token>
-5. JwtAuthFilter (a OncePerRequestFilter) runs before Spring Security's
-   authorization check on every request:
-      - no/malformed header  → request proceeds as anonymous
-      - valid signature+claims → SecurityContext is populated with the
-        user's authorities (ROLE_USER or ROLE_ADMIN)
-      - invalid/expired token → SecurityContext stays empty
-6. SecurityConfig's authorizeHttpRequests rules then decide:
-      - public endpoints        → allowed regardless
-      - /api/admin/**           → requires ROLE_ADMIN → 403 otherwise
-      - everything else         → requires any authenticated user → 401 otherwise
-7. Frontend: a 401 on any authenticated call triggers a global logout
-   and redirect to /login (handled once, centrally, in AuthContext —
-   not repeated in every component)
+---
+
+# 🖥️ Frontend Architecture
+
+The frontend is a React single-page application.
+
+```text
+src/
+├── api/
+├── context/
+├── hooks/
+├── utils/
+├── layouts/
+├── components/
+├── pages/
+├── pages/admin/
+└── styles/
 ```
 
-This is the exact chain to describe in an interview:
-**React login form → POST /api/auth/login → Spring Security
-AuthenticationManager → BCrypt password check → JWT issued → stored
-client-side → sent as a Bearer header → JwtAuthFilter validates it on
-every request → SecurityConfig enforces role-based authorization.**
+## API Layer
 
-## User flow
+All HTTP communication is centralized under:
 
-Register/Login → Browse/Search/Filter books → Book details → Add to cart →
-Adjust quantity → Checkout (address, phone, payment method) → Order placed
-(stock decremented server-side, inside one transaction) → Order history →
-Order details → optionally cancel while `PENDING`.
-
-## Admin flow
-
-Login (same form, redirected by role) → Admin dashboard (stats) → Manage
-books (create/edit/soft-delete, inline stock edits) → Manage categories →
-Manage users (search, enable/disable) → Manage orders (filter by status,
-move to the next allowed status).
-
-## Project structure
-
+```text
+src/api/
 ```
+
+Axios is responsible for:
+
+* API requests.
+* JWT headers.
+* Authentication handling.
+* Centralized 401 handling.
+
+Components do not directly manage API URLs.
+
+## Context Layer
+
+Application-wide state is managed through:
+
+```text
+AuthContext
+CartContext
+ToastContext
+```
+
+## Protected Routes
+
+The frontend uses protected routing for authenticated and administrator areas.
+
+Example:
+
+```text
+USER
+  │
+  ├── Customer pages
+  │
+  └── Admin page → Redirect / Access denied
+
+ADMIN
+  │
+  └── Admin pages
+```
+
+Backend authorization remains the final security boundary.
+
+---
+
+# 📁 Project Structure
+
+```text
 samba-book-platform/
-├── README.md                     ← this file
+│
+├── README.md
+│
 ├── backend/
 │   ├── pom.xml
-│   ├── README.md                 ← backend quick-start
+│   ├── README.md
+│   │
 │   └── src/main/
 │       ├── resources/
-│       │   ├── application.properties        (defaults, all overridable by env vars)
-│       │   └── application-prod.properties    (safer prod defaults, profile "prod")
+│       │   ├── application.properties
+│       │   └── application-prod.properties
+│       │
 │       └── java/com/samba/
 │           ├── SambaApplication.java
-│           ├── config/            SecurityConfig, DataSeeder
-│           ├── security/          JwtService, JwtAuthFilter, CustomUserDetailsService,
-│           │                      RestAuthEntryPoint, RestAccessDeniedHandler
-│           ├── entity/            User, Role, Category, Book, Cart, CartItem,
-│           │                      Order, OrderItem, OrderStatus, BaseEntity
-│           ├── repository/        UserRepository, CategoryRepository, BookRepository
-│           │                      (+ BookSpecifications), CartRepository,
-│           │                      CartItemRepository, OrderRepository
-│           ├── dto/                23 request/response records
-│           ├── mapper/            EntityMapper
-│           ├── service/           AuthService, UserService, CategoryService,
-│           │                      BookService, CartService, OrderService, AdminService
-│           ├── controller/        Auth, User, Book, Category, Cart, Order,
-│           │                      AdminBook, AdminCategory, AdminOrder, AdminUser,
-│           │                      AdminDashboard
-│           └── exception/         ApiError, ResourceNotFoundException,
-│                                  BadRequestException, ConflictException,
-│                                  GlobalExceptionHandler
+│           │
+│           ├── config/
+│           │   ├── SecurityConfig
+│           │   └── DataSeeder
+│           │
+│           ├── security/
+│           │   ├── JwtService
+│           │   ├── JwtAuthFilter
+│           │   ├── CustomUserDetailsService
+│           │   ├── RestAuthEntryPoint
+│           │   └── RestAccessDeniedHandler
+│           │
+│           ├── entity/
+│           ├── repository/
+│           ├── dto/
+│           ├── mapper/
+│           ├── service/
+│           ├── controller/
+│           └── exception/
+│
 └── frontend/
-    ├── package.json  vite.config.js  index.html  vercel.json
-    ├── .env.example
-    ├── README.md                 ← frontend quick-start
+    ├── package.json
+    ├── vite.config.js
+    ├── index.html
+    ├── vercel.json
+    │
     └── src/
-        ├── main.jsx  App.jsx     (routes)
-        ├── api/                  client.js (axios, JWT header, 401 handling),
-        │                         auth, users, books, categories, cart, orders, admin
-        ├── context/              AuthContext, CartContext, ToastContext
-        ├── hooks/                useFetch, useDebounce
-        ├── utils/                format, validators, nav
-        ├── layouts/              MainLayout, AdminLayout
-        ├── components/           Navbar, Footer, Loader, Alert, EmptyState, Modal,
-        │                         ConfirmDialog, Pagination, StatusBadge, Field,
-        │                         BookCover, BookCard, QtyStepper, AddToCartButton,
-        │                         OrderTimeline, ProtectedRoute
-        ├── pages/                Home, Login, Register, Books, BookDetails, Dashboard,
-        │                         Profile, Cart, Checkout, OrderSuccess, MyOrders,
-        │                         OrderDetails, NotFound
-        ├── pages/admin/          AdminDashboard, ManageBooks, BookForm,
-        │                         ManageCategories, ManageUsers, ManageOrders
-        └── styles/index.css
+        ├── main.jsx
+        ├── App.jsx
+        │
+        ├── api/
+        ├── context/
+        ├── hooks/
+        ├── utils/
+        ├── layouts/
+        ├── components/
+        ├── pages/
+        ├── pages/admin/
+        └── styles/
 ```
 
-## Local setup
+---
 
-Prerequisites: **Java 21**, **Maven**, **Node.js 18+**, **MySQL 8** running
-locally.
+# 🛠️ Technology Stack
+
+| Area              | Technology                  |
+| ----------------- | --------------------------- |
+| Frontend          | React 18                    |
+| Routing           | React Router 6              |
+| HTTP Client       | Axios                       |
+| Build Tool        | Vite                        |
+| Styling           | Custom CSS                  |
+| Backend           | Java 21                     |
+| Framework         | Spring Boot 3.3             |
+| REST API          | Spring Web                  |
+| Security          | Spring Security             |
+| Authentication    | JWT                         |
+| Password Security | BCrypt                      |
+| ORM               | Spring Data JPA / Hibernate |
+| Database          | MySQL 8                     |
+| Backend Build     | Maven                       |
+| Frontend Build    | npm / Vite                  |
+| Deployment        | Render / Railway + Vercel   |
+| Containerization  | Not required                |
+
+---
+
+# ⚙️ Local Development
+
+## Prerequisites
+
+Install:
+
+* Java 21
+* Maven
+* Node.js 18+
+* MySQL 8
+* Git
+
+Verify:
 
 ```bash
-# 1. clone, then from the project root:
+java -version
+mvn -version
+node -version
+npm -version
+mysql --version
+git --version
+```
 
-# 2. database
-mysql -u root -p -e "CREATE DATABASE samba_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+---
 
-# 3. backend (terminal 1)
+# 🗄️ Create the Database
+
+Create the database:
+
+```sql
+CREATE DATABASE samba_db
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+```
+
+No manual table creation is required.
+
+Hibernate creates/updates the tables from the JPA entities.
+
+---
+
+# ▶️ Start the Backend
+
+Navigate to:
+
+```bash
 cd backend
-export DB_USERNAME=root DB_PASSWORD=yourpassword JWT_SECRET=$(openssl rand -base64 48)
-mvn spring-boot:run          # http://localhost:8080
+```
 
-# 4. frontend (terminal 2)
+Set the required environment variables.
+
+Example:
+
+```bash
+DB_USERNAME=root
+DB_PASSWORD=yourpassword
+JWT_SECRET=your-long-random-secret
+```
+
+Start Spring Boot:
+
+```bash
+mvn spring-boot:run
+```
+
+Backend:
+
+```text
+http://localhost:8080
+```
+
+API:
+
+```text
+http://localhost:8080/api
+```
+
+---
+
+# ▶️ Start the Frontend
+
+Open another terminal:
+
+```bash
 cd frontend
-cp .env.example .env         # defaults already point at http://localhost:8080/api
 npm install
-npm run dev                  # http://localhost:5173
+npm run dev
 ```
 
-Log in as the seeded admin (`admin@samba.com` / `Admin@123`), or register a
-new customer account.
+Frontend:
 
-## Environment variables
+```text
+http://localhost:5173
+```
 
-### Backend (`backend/src/main/resources/application.properties`)
+---
 
-| Variable | Default | Notes |
-|---|---|---|
-| `PORT` / `SERVER_PORT` | `8080` | `PORT` is what Render/Railway inject automatically |
-| `DB_HOST` | `localhost` | |
-| `DB_PORT` | `3306` | |
-| `DB_NAME` | `samba_db` | |
-| `DB_USERNAME` | `root` | |
-| `DB_PASSWORD` | `change_me` | **must** be set outside local dev |
-| `DDL_AUTO` | `update` | Hibernate schema strategy |
-| `SHOW_SQL` | `false` | |
-| `JWT_SECRET` | (placeholder) | **must** be a long random string in any real deployment — generate with `openssl rand -base64 48` |
-| `JWT_EXPIRATION_MS` | `86400000` (24h) | |
-| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:5173` | comma-separated; add your deployed frontend URL |
-| `ADMIN_NAME` | `Samba Admin` | seeded admin account |
-| `ADMIN_EMAIL` | `admin@samba.com` | |
-| `ADMIN_PASSWORD` | `Admin@123` | **change this before deploying** |
-| `SEED_SAMPLE_DATA` | `true` locally, `false` under the `prod` profile | demo categories/books |
-| `SPRING_PROFILES_ACTIVE` | _(none)_ | set to `prod` to apply `application-prod.properties` |
+# 🔑 Default Development Admin
 
-Alternatively, the entire datasource can be overridden directly via Spring
-Boot's standard `SPRING_DATASOURCE_URL` / `SPRING_DATASOURCE_USERNAME` /
-`SPRING_DATASOURCE_PASSWORD` env vars if your MySQL provider gives you a
-full connection string.
+For local development, the seeded administrator is:
 
-### Frontend (`frontend/.env`)
+```text
+Email: admin@samba.com
+Password: Admin@123
+```
 
-| Variable | Default | Notes |
-|---|---|---|
-| `VITE_API_BASE_URL` | `http://localhost:8080/api` | point this at your deployed backend + `/api` |
-| `VITE_CURRENCY` | `USD` | any ISO 4217 code, changes price formatting only |
+### Important
 
-## Database setup
+Change the administrator password before any real deployment.
 
-Works with any managed MySQL 8 instance (Railway's MySQL plugin, Render's
-managed MySQL/PlanetScale, AWS RDS, etc.):
+---
 
-1. Provision a MySQL 8 database and note its host, port, database name,
-   username and password.
-2. Set `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` (or the
-   single `SPRING_DATASOURCE_URL` override) on the backend service.
-3. Leave `DDL_AUTO=update` for the first deploy — Hibernate creates every
-   table from the JPA entities automatically. No manual SQL is required.
-4. If your provider requires TLS, append `&useSSL=true&requireSSL=true` to
-   `SPRING_DATASOURCE_URL`, or use the provider-specific connection string
-   they give you directly.
-5. Once the schema is stable, consider switching `DDL_AUTO` to `validate`
-   (fails fast on drift instead of silently altering tables) — see
-   [Future enhancements](#future-enhancements) re: migrations.
+# 🌱 Environment Variables
 
-## Backend setup
+## Backend
+
+| Variable                 | Default           | Purpose                   |
+| ------------------------ | ----------------- | ------------------------- |
+| `PORT`                   | `8080`            | Server port               |
+| `DB_HOST`                | `localhost`       | MySQL host                |
+| `DB_PORT`                | `3306`            | MySQL port                |
+| `DB_NAME`                | `samba_db`        | Database name             |
+| `DB_USERNAME`            | `root`            | Database user             |
+| `DB_PASSWORD`            | `change_me`       | Database password         |
+| `DDL_AUTO`               | `update`          | Hibernate schema strategy |
+| `SHOW_SQL`               | `false`           | Hibernate SQL logging     |
+| `JWT_SECRET`             | Placeholder       | JWT signing secret        |
+| `JWT_EXPIRATION_MS`      | `86400000`        | JWT lifetime              |
+| `CORS_ALLOWED_ORIGINS`   | localhost origins | Allowed frontend origins  |
+| `ADMIN_NAME`             | `Samba Admin`     | Seeded admin name         |
+| `ADMIN_EMAIL`            | `admin@samba.com` | Seeded admin email        |
+| `ADMIN_PASSWORD`         | `Admin@123`       | Seeded admin password     |
+| `SEED_SAMPLE_DATA`       | `true` locally    | Sample data switch        |
+| `SPRING_PROFILES_ACTIVE` | none              | Production profile        |
+
+## Frontend
+
+Create:
+
+```text
+frontend/.env
+```
+
+Example:
+
+```env
+VITE_API_BASE_URL=http://localhost:8080/api
+VITE_CURRENCY=USD
+```
+
+---
+
+# 🚀 Production Deployment
+
+Samba is designed to deploy without Docker.
+
+## Backend
+
+Recommended deployment targets:
+
+```text
+Render
+Railway
+```
+
+Backend build:
 
 ```bash
-cd backend
-mvn clean package -DskipTests   # produces target/samba-backend-1.0.0.jar
+mvn clean package -DskipTests
+```
+
+Start command:
+
+```bash
 java -jar target/samba-backend-1.0.0.jar
 ```
-Or for local development: `mvn spring-boot:run`.
 
-## Frontend setup
+Configure production environment variables for:
 
-```bash
-cd frontend
-npm install
-npm run build     # production build → dist/
-npm run preview   # serve the production build locally
+```text
+Database
+JWT_SECRET
+Admin credentials
+CORS
+Spring profile
 ```
 
-## Deployment
+Use:
 
-No Docker — both halves deploy from source with a build command and a
-start command.
+```text
+SPRING_PROFILES_ACTIVE=prod
+```
 
-### Backend → Render or Railway
+---
 
-1. Push this repository to GitHub.
-2. Create a new **Web Service** (Render) or **Service from repo** (Railway),
-   root directory `backend`.
-3. Build command: `mvn clean package -DskipTests`
-   Start command: `java -jar target/samba-backend-1.0.0.jar`
-4. Add the backend environment variables from the table above — at minimum
-   `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`,
-   `JWT_SECRET`, `ADMIN_PASSWORD`, `CORS_ALLOWED_ORIGINS` (your Vercel URL),
-   and `SPRING_PROFILES_ACTIVE=prod`.
-5. Provision MySQL: Railway has a one-click MySQL plugin; on Render, use an
-   external managed MySQL (Render's own managed databases are Postgres) —
-   e.g. PlanetScale or a small MySQL instance elsewhere.
-6. Deploy. Both platforms set `PORT` automatically — `application.properties`
-   already reads it.
+# 🌐 Frontend Deployment
 
-### Frontend → Vercel
+The React frontend can be deployed to:
 
-1. Import the repository into Vercel, root directory `frontend`.
-2. Framework preset: **Vite**. Build command `npm run build`, output
-   directory `dist` (Vercel auto-detects both).
-3. Add environment variable `VITE_API_BASE_URL` = your deployed backend URL
-   + `/api` (e.g. `https://samba-backend.onrender.com/api`).
-4. Deploy. `vercel.json` is already included so client-side routes (e.g.
-   `/books/12`) don't 404 on refresh.
-5. Once you have the Vercel URL, add it to the backend's
-   `CORS_ALLOWED_ORIGINS` and redeploy the backend.
+```text
+Vercel
+```
 
-## Screenshots
+Build command:
 
-> _Add screenshots here before sharing the repo — suggested set:_
-- [ ] Home page
-- [ ] Book catalogue with filters
-- [ ] Book details page
-- [ ] Cart
-- [ ] Checkout
-- [ ] Order history / order details
-- [ ] Admin dashboard
-- [ ] Admin manage books / categories / users / orders
-- [ ] Mobile view (nav + book grid)
+```bash
+npm run build
+```
 
-## Future enhancements
+Output:
 
-Listed honestly as **not implemented**, not faked:
-- **Real payment gateway** (Stripe/Razorpay) — checkout currently records a
-  chosen payment method only.
-- **Database migrations** (Flyway/Liquibase) instead of
-  `ddl-auto=update`, for safe schema evolution over time.
-- **Refresh tokens** — the JWT currently just expires (24h default) and the
-  user has to log back in; no silent refresh.
-- **Email notifications** (order confirmation, status changes).
-- **Product reviews/ratings**.
-- **Rate limiting** on auth endpoints.
-- **Automated tests** (unit/integration) — not included in this pass.
-- **Book cover uploads** — currently a book's cover is an external image
-  URL, not a file upload.
+```text
+dist
+```
 
-## Known limitations
+Set:
 
-- The JWT is stored in `localStorage`, not an httpOnly cookie — acceptable
-  here since the app renders no untrusted HTML, but worth knowing.
-- No automated test suite is included.
-- Order listing queries are not batch-optimized (fine at demo scale; would
-  want `@EntityGraph`/`JOIN FETCH` under real load — see Future enhancements).
+```env
+VITE_API_BASE_URL=https://your-backend-url/api
+```
 
+The backend CORS configuration must include the deployed frontend URL.
 
-## Role-based access
+---
 
-Samba uses two roles:
-- `USER`: customer/student pages only. Admin navigation and `/admin/**` are hidden and protected.
-- `ADMIN`: admin pages only for administration. `/api/admin/**` requires `ROLE_ADMIN`.
+# 🔒 Production Security Considerations
 
-New user registration always creates `USER`. The role is never accepted from the public registration request.
+Before production deployment:
 
-If a USER manually opens an admin URL, the frontend redirects them to their user home and the backend returns 403 for admin API calls. If an ADMIN tries to open USER-only learning/customer routes, the frontend redirects them to the admin area and the learning API requires `ROLE_USER`.
+* Replace the default admin password.
+* Generate a strong JWT secret.
+* Configure production CORS origins.
+* Do not commit `.env` files.
+* Use HTTPS.
+* Set production database credentials through environment variables.
+* Consider changing `ddl-auto` from `update` to `validate`.
+* Introduce database migrations.
+* Add rate limiting to authentication endpoints.
+* Add automated security tests.
+
+---
+
+# 📸 Screenshots
+
+Add screenshots here once the final UI is ready.
+
+Recommended screenshots:
+
+### Customer
+
+* Home page
+* Book catalogue
+* Search and filtering
+* Book details
+* Shopping cart
+* Checkout
+* Order history
+* Order tracking
+* Profile
+
+### Administration
+
+* Admin dashboard
+* Book management
+* Category management
+* User management
+* Order management
+
+### Responsive Design
+
+* Desktop
+* Tablet
+* Mobile
+
+Example:
+
+```text
+docs/
+└── screenshots/
+    ├── home.png
+    ├── books.png
+    ├── book-details.png
+    ├── cart.png
+    ├── checkout.png
+    ├── orders.png
+    ├── admin-dashboard.png
+    ├── admin-books.png
+    ├── admin-users.png
+    └── admin-orders.png
+```
+
+---
+
+# 🧪 Validation & Error Handling
+
+The application validates operations on both the frontend and backend.
+
+Important business rules are enforced server-side.
+
+Examples:
+
+```text
+Cannot add unavailable quantity
+Cannot checkout without sufficient stock
+Cannot cancel a delivered order
+Cannot move an order through an invalid status transition
+Cannot delete a category containing books
+Cannot disable the currently authenticated administrator
+Cannot access another user's order
+Cannot access ADMIN APIs as USER
+```
+
+The backend remains the source of truth for business rules.
+
+---
+
+# 📈 Scalability Considerations
+
+Although Samba is currently designed as a portfolio-scale application, the architecture provides clear extension points.
+
+Potential improvements include:
+
+* Redis caching.
+* Database indexing improvements.
+* Entity graphs / optimized fetch strategies.
+* Background order processing.
+* Email notification service.
+* Payment service integration.
+* Object storage for book covers.
+* Refresh-token authentication.
+* API rate limiting.
+* Automated testing.
+* Database migrations.
+* Observability and centralized logging.
+
+---
+
+# 🔮 Future Enhancements
+
+The following features are intentionally **not presented as implemented**:
+
+### 💳 Real Payment Gateway
+
+Integrate:
+
+* Razorpay
+* Stripe
+
+### 🔄 Refresh Tokens
+
+Add refresh-token support for longer-lived sessions without requiring frequent login.
+
+### 📧 Email Notifications
+
+Send notifications for:
+
+* Order confirmation.
+* Order shipment.
+* Delivery.
+* Cancellation.
+
+### ⭐ Reviews & Ratings
+
+Allow customers to review purchased books.
+
+### 🖼️ Book Cover Upload
+
+Replace external image URLs with managed file/object storage.
+
+### 🗃️ Database Migrations
+
+Introduce:
+
+```text
+Flyway
+```
+
+or:
+
+```text
+Liquibase
+```
+
+instead of relying on Hibernate `ddl-auto=update`.
+
+### 🧪 Automated Testing
+
+Add:
+
+```text
+JUnit
+Mockito
+Spring Boot Test
+Integration Tests
+React Testing
+```
+
+### 🛡️ Rate Limiting
+
+Protect authentication and other sensitive endpoints against excessive requests.
+
+---
+
+# ⚠️ Known Limitations
+
+The current portfolio version has the following limitations:
+
+* JWT is stored in `localStorage`.
+* No real payment gateway is integrated.
+* No refresh-token mechanism.
+* No automated test suite is included.
+* Book covers currently use external image URLs.
+* Database migrations are not currently implemented.
+* Order queries are suitable for demo-scale usage but could be optimized for larger datasets.
+* Production infrastructure and monitoring are not included in the repository.
+
+These limitations are intentionally documented so the project does not claim functionality that has not been implemented.
+
+---
+
+# 💼 Portfolio & Interview Highlights
+
+Samba demonstrates practical experience with:
+
+* Java 21
+* Spring Boot
+* Spring Security
+* JWT authentication
+* BCrypt password hashing
+* Role-based authorization
+* REST API development
+* Spring Data JPA
+* Hibernate
+* MySQL
+* React
+* React Router
+* Axios
+* State management using React Context
+* DTO-based API design
+* Layered architecture
+* Transaction management
+* Server-side validation
+* Pagination and filtering
+* Inventory management
+* Order lifecycle management
+* Soft deletion
+* Exception handling
+* Responsive UI development
+* Frontend/backend integration
+
+### Interview Architecture Summary
+
+A concise way to explain the project:
+
+> **Samba is a Java Full Stack e-commerce application built using React, Spring Boot, Spring Security, JWT, Spring Data JPA, Hibernate and MySQL. The backend follows a layered REST architecture with controllers, services, repositories, DTOs and entity mapping. Authentication is handled using JWT and BCrypt, while authorization is enforced using USER and ADMIN roles. Customers can browse books, manage their cart, place orders and track order status, while administrators manage books, categories, users and orders through a protected administration module.**
+
+---
+
+# 👩‍💻 Author
+
+**Mohanapriya Kamaraj**
+
+Java Full Stack Developer
+
+### Technologies
+
+```text
+Java
+Spring Boot
+Spring Security
+REST APIs
+JPA / Hibernate
+MySQL
+React
+JavaScript
+HTML
+CSS
+Git
+```
+
+---
+
+# 📄 License
+
+This project is intended primarily as a **portfolio and learning project**.
+
+Add an appropriate open-source license such as MIT if you intend to distribute the source code publicly under that license.
+
+---
+
+# ⭐ Project Status
+
+```text
+Backend        ████████████████████  Complete
+Authentication ████████████████████  Complete
+Authorization ████████████████████  Complete
+Book Store     ████████████████████  Complete
+Cart           ████████████████████  Complete
+Orders         ████████████████████  Complete
+Admin Panel    ████████████████████  Complete
+Deployment     ███████████████░░░░░  Configurable
+Payments       ░░░░░░░░░░░░░░░░░░░░  Planned
+Testing        ░░░░░░░░░░░░░░░░░░░░  Planned
+```
+
+---
+
+## 📌 Why This Project?
+
+Samba was designed to demonstrate how a real-world full-stack application can be structured beyond simple CRUD operations.
+
+The project focuses on:
+
+**Secure authentication → Role-based authorization → REST APIs → Business logic → Database transactions → React integration → Admin operations → Order lifecycle management**
+
+This makes Samba a practical demonstration of Java Full Stack development rather than a simple frontend bookstore.
